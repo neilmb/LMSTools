@@ -68,7 +68,7 @@ class LMSPlayer(LMSUtils):
         :rtype: LMSPlayer
         :returns: Instance of squeezeplayer
         """
-        ref = server.request(params="player id {} ?".format(index))["_id"]
+        ref = server._request(command="player id {} ?".format(index))["_id"]
         return cls(ref, server)
 
     def __repr__(self):
@@ -93,10 +93,10 @@ class LMSPlayer(LMSUtils):
         Retrieves the name, model and ip attributes. This method is called on initialisation.
         """
         self._name = self.name
-        self._model = self.parse_request("player model ?", "_model")
-        self._ip = self.parse_request("player ip ?", "_ip")
+        self._model = self._parse_request("player model ?", "_model")
+        self._ip = self._parse_request("player ip ?", "_ip")
 
-    def request(self, command):
+    def _request(self, command):
         """
         :type command: str, list
         :param command: command to be sent to server
@@ -104,9 +104,9 @@ class LMSPlayer(LMSUtils):
         :returns: JSON response received from server
 
         Send the request to the server."""
-        return self.server.request(self.ref, command)
+        return self.server._request(command, player=self.ref)
 
-    def parse_request(self, command, key):
+    def _parse_request(self, command, key):
         """
         :type command: str, list
         :param command: command to be sent to server
@@ -118,35 +118,35 @@ class LMSPlayer(LMSUtils):
 
         This is the same as player.request(command).get(key)
         """
-        return self.request(command).get(key)
+        return self._request(command).get(key)
 
     def play(self):
         """Start playing the current item"""
-        self.request("play")
+        self._request("play")
 
     def stop(self):
         """Stop the player"""
-        self.request("stop")
+        self._request("stop")
 
     def pause(self):
         """Pause the player. This does not unpause the player if already paused."""
-        self.request("pause 1")
+        self._request("pause 1")
 
     def unpause(self):
         """Unpause the player."""
-        self.request("pause 0")
+        self._request("pause 0")
 
     def toggle(self):
         """Play/Pause Toggle"""
-        self.request("pause")
+        self._request("pause")
 
-    def next(self):
+    def __next__(self):
         """Play next item in playlist"""
-        self.request("playlist jump +1")
+        self._request("playlist jump +1")
 
     def prev(self):
         """Play previous item in playlist"""
-        self.request("playlist jump -1")
+        self._request("playlist jump -1")
 
     def mute(self):
         """Mute player"""
@@ -164,7 +164,7 @@ class LMSPlayer(LMSUtils):
         Move player to specified position in current playlist item"""
         try:
             seconds = float(seconds)
-            self.request("time {}".format(seconds))
+            self._request("time {}".format(seconds))
         except TypeError:
             pass
 
@@ -177,7 +177,7 @@ class LMSPlayer(LMSUtils):
         """
         try:
             seconds = int(seconds)
-            self.request("time +{}".format(seconds))
+            self._request("time +{}".format(seconds))
         except TypeError:
             pass
 
@@ -190,7 +190,7 @@ class LMSPlayer(LMSUtils):
         """
         try:
             seconds = int(seconds)
-            self.request("time -{}".format(seconds))
+            self._request("time -{}".format(seconds))
         except TypeError:
             pass
 
@@ -215,7 +215,7 @@ class LMSPlayer(LMSUtils):
 
         """
         if self._name is None:
-            self._name = self.parse_request("name ?", "_value")
+            self._name = self._parse_request("name ?", "_value")
 
         return self._name
 
@@ -225,7 +225,7 @@ class LMSPlayer(LMSUtils):
         Set the player name.
         """
         try:
-            self.request("name {}".format(name))
+            self._request("name {}".format(name))
             self._name = name
         except:
             pass
@@ -244,7 +244,7 @@ class LMSPlayer(LMSUtils):
         :rtype: str, unicode
         :returns: curent mode (e.g. "play", "pause")
         """
-        return self.parse_request("mode ?", "_mode")
+        return self._parse_request("mode ?", "_mode")
 
     @property
     def muted(self):
@@ -258,7 +258,7 @@ class LMSPlayer(LMSUtils):
         :setter: set muting status (True = muted)
 
         """
-        muted = self.parse_request("mixer muting ?", "_muting")
+        muted = self._parse_request("mixer muting ?", "_muting")
         if muted is None:
             return False
         else:
@@ -267,7 +267,7 @@ class LMSPlayer(LMSUtils):
     @muted.setter
     def muted(self, muting):
         try:
-            self.request("mixer muting {}".format(int(muting)))
+            self._request("mixer muting {}".format(int(muting)))
         except:
             pass
 
@@ -277,7 +277,7 @@ class LMSPlayer(LMSUtils):
         :rtype: int
         :returns: Wifi signal strength
         """
-        return self.parse_request("signalstrength ?", "_signalstrength")
+        return self._parse_request("signalstrength ?", "_signalstrength")
 
     @property
     def track_artist(self):
@@ -291,7 +291,7 @@ class LMSPlayer(LMSUtils):
             u'Kiasmos'
 
         """
-        return self.parse_request("artist ?", "_artist")
+        return self._parse_request("artist ?", "_artist")
 
     @property
     def track_album(self):
@@ -305,7 +305,7 @@ class LMSPlayer(LMSUtils):
             u'Kiasmos'
 
         """
-        return self.parse_request("album ?", "_album")
+        return self._parse_request("album ?", "_album")
 
     @property
     def track_title(self):
@@ -319,7 +319,7 @@ class LMSPlayer(LMSUtils):
             u'Lit'
 
         """
-        return self.parse_request("title ?", "_title")
+        return self._parse_request("title ?", "_title")
 
     @property
     def track_duration(self):
@@ -333,7 +333,7 @@ class LMSPlayer(LMSUtils):
             384.809
 
         """
-        return float(self.parse_request("duration ?", "_duration"))
+        return float(self._parse_request("duration ?", "_duration"))
 
     @property
     def track_elapsed_and_duration(self):
@@ -385,7 +385,7 @@ class LMSPlayer(LMSUtils):
 
         """
         try:
-            elapsed = float(self.parse_request("time ?", "_time"))
+            elapsed = float(self._parse_request("time ?", "_time"))
         except TypeError:
             elapsed = 0.0
 
@@ -411,7 +411,7 @@ class LMSPlayer(LMSUtils):
 
         """
         try:
-            return int(self.parse_request("playlist tracks ?", "_tracks"))
+            return int(self._parse_request("playlist tracks ?", "_tracks"))
         except:
             return 0
 
@@ -421,7 +421,7 @@ class LMSPlayer(LMSUtils):
         :param index: index of playlist track to play (zero-based index)
 
         """
-        return self.request('playlist index {}'.format(index))
+        return self._request('playlist index {}'.format(index))
 
     @property
     def playlist_position(self):
@@ -431,7 +431,7 @@ class LMSPlayer(LMSUtils):
 
         """
         try:
-            return int(self.parse_request("playlist index ?", "_index"))
+            return int(self._parse_request("playlist index ?", "_index"))
         except:
             return 0
 
@@ -544,7 +544,7 @@ class LMSPlayer(LMSUtils):
         command = "status {} {} {}".format(start, amount, tags)
 
         try:
-            return self.parse_request(command, "playlist_loop")
+            return self._parse_request(command, "playlist_loop")
         except:
             return []
 
@@ -557,7 +557,7 @@ class LMSPlayer(LMSUtils):
 
         """
         # item = self.quote(item)
-        self.request("playlist play {}".format(item))
+        self._request("playlist play {}".format(item))
 
     def playlist_add(self, item):
         """
@@ -568,7 +568,7 @@ class LMSPlayer(LMSUtils):
 
         """
         # item = self.quote(item)
-        self.request("playlist add {}".format(item))
+        self._request("playlist add {}".format(item))
 
     def playlist_insert(self, item):
         """
@@ -579,7 +579,7 @@ class LMSPlayer(LMSUtils):
 
         """
         # item = self.quote(item)
-        self.request("playlist insert {}".format(item))
+        self._request("playlist insert {}".format(item))
 
     def playlist_delete(self, item):
         """
@@ -590,11 +590,11 @@ class LMSPlayer(LMSUtils):
 
         """
         # item = self.quote(item)
-        self.request("playlist deleteitem {}".format(item))
+        self._request("playlist deleteitem {}".format(item))
 
     def playlist_clear(self):
         """Clear the entire playlist. Will also stop the player."""
-        self.request("playlist clear")
+        self._request("playlist clear")
 
     def playlist_move(self, from_index, to_index):
         """
@@ -606,7 +606,7 @@ class LMSPlayer(LMSUtils):
         :param to_index: new playlist position
 
         """
-        self.request("playlist move {} {}" % (from_index, to_index))
+        self._request("playlist move {} {}" % (from_index, to_index))
 
     def playlist_erase(self, index):
         """
@@ -616,7 +616,7 @@ class LMSPlayer(LMSUtils):
         :param index: index of item to delete
 
         """
-        self.request("playlist delete {}".format(index))
+        self._request("playlist delete {}".format(index))
 
     @property
     def volume(self):
@@ -637,7 +637,7 @@ class LMSPlayer(LMSUtils):
         Min: 0, Max: 100
         """
         try:
-            return int(self.parse_request("mixer volume ?", "_volume"))
+            return int(self._parse_request("mixer volume ?", "_volume"))
         except:
             return 0
 
@@ -650,7 +650,7 @@ class LMSPlayer(LMSUtils):
                 volume = 0
             if volume > 100:
                 volume = 100
-            self.request("mixer volume {}".format(volume))
+            self._request("mixer volume {}".format(volume))
         except TypeError:
             pass
 
@@ -662,7 +662,7 @@ class LMSPlayer(LMSUtils):
         :param interval: amount to increase volume (default 5)
 
         """
-        self.request("mixer volume +{}".format(interval))
+        self._request("mixer volume +{}".format(interval))
 
     def volume_down(self, interval=5):
         """
@@ -672,7 +672,7 @@ class LMSPlayer(LMSUtils):
         :param interval: amount to decrease volume (default 5)
 
         """
-        self.request("mixer volume -{}".format(interval))
+        self._request("mixer volume -{}".format(interval))
 
     def sync(self, player=None, ref=None, index=None, master=True):
         """
@@ -711,14 +711,14 @@ class LMSPlayer(LMSUtils):
             target = index
 
         if master:
-            self.request(["sync", target])
+            self._request(["sync", target])
 
         else:
-            self.server.request(player=target, params=["sync", self.ref])
+            self.server._request(player=target, command=["sync", self.ref])
 
     def unsync(self):
         """Remove player from syncgroup."""
-        self.request("sync -")
+        self._request("sync -")
 
     def get_synced_players(self, refs_only=False):
         """
@@ -729,7 +729,7 @@ class LMSPlayer(LMSUtils):
         references or list of LMSPlayer instances.
         :rtype: list
         """
-        sync = self.parse_request("sync ?", "_sync")
+        sync = self._parse_request("sync ?", "_sync")
 
         if str(sync) == "-":
             return list()

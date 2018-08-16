@@ -2,8 +2,9 @@
 Simple python class definitions for interacting with Logitech Media Server.
 This code uses the JSON interface.
 """
-import urllib2
 import json
+
+import requests
 
 from .player import LMSPlayer
 
@@ -32,36 +33,31 @@ class LMSServer(object):
         self.web = "http://{h}:{p}/".format(h=host, p=port)
         self.url = "http://{h}:{p}/jsonrpc.js".format(h=host, p=port)
 
-    def request(self, player="-", params=None):
+    def _request(self, command, player="-"):
         """
         :type player: (str)
         :param player: MAC address of a connected player. Alternatively, "-" can be used for server level requests.
-        :type params: (str, list)
-        :param params: Request command
+        :type command: (str, list)
+        :param command: Request command
 
         """
-        req = urllib2.Request(self.url)
-        req.add_header('Content-Type', 'application/json')
-
-        if type(params) == str:
-            params = params.split()
-
-        cmd = [player, params]
-
-        data = {"id": self.id,
-                "method": "slim.request",
-                "params": cmd}
-
         try:
-            response = urllib2.urlopen(req, json.dumps(data))
-            self.id += 1
-            return json.loads(response.read())["result"]
+            command = command.split()
+        except AttributeError:
+            pass
+        cmd = [player, command]
+        params = {
+                  'id': self.id,
+                  'method': 'slim.request',
+                  'params': cmd,
+                 }
 
-        except urllib2.URLError:
-            raise LMSConnectionError("Could not connect to server.")
+        response = requests.post(self.url, json=params,
+                                 headers={'Content-Type': 'application/json'})
+        response.raise_for_status()
+        self.id += 1
 
-        except:
-            return None
+        return response.json()['result']
 
     def get_players(self):
         """
@@ -95,12 +91,7 @@ class LMSServer(object):
             3
 
         """
-        try:
-            count = self.request(params="player count ?")["_count"]
-        except:
-            count = 0
-
-        return count
+        return self._request('player count ?')['_count']
 
     def get_sync_groups(self):
         """
@@ -113,7 +104,7 @@ class LMSServer(object):
             [[u'40:40:40:40:40:40', u'41:41:41:41:41:41']]
 
         """
-        groups = self.request(params="syncgroups ?")
+        groups = self._request(params="syncgroups ?")
         syncgroups = [x.get("sync_members","").split(",") for x in groups.get("syncgroups_loop",dict())]
         return syncgroups
 
@@ -179,7 +170,7 @@ class LMSServer(object):
 
         Sync squeezeplayers.
         """
-        self.request(player=master, params=["sync", slave])
+        self._request(player=master, params=["sync", slave])
 
 
     def ping(self):
@@ -197,7 +188,7 @@ class LMSServer(object):
         """
 
         try:
-            self.request(params="ping")
+            self._request(params="ping")
             return True
         except LMSConnectionError:
             return False
@@ -213,7 +204,7 @@ class LMSServer(object):
             u'7.9.0'
         """
         if self._version is None:
-            self._version = self.request(params="version ?")["_version"]
+            self._version = self._request(params="version ?")["_version"]
 
         return self._version
 
@@ -226,17 +217,17 @@ class LMSServer(object):
         """
         is_scanning = True
         try:
-            is_scanning = bool(self.request("rescan ?")["_rescan"])
+            is_scanning = bool(self._request("rescan ?")["_rescan"])
         except:
             pass
 
         if not is_scanning:
             if mode == 'fast':
-                return self.request(params="rescan")
+                return self._request(params="rescan")
             elif mode == 'full':
-                return self.request(params="wipecache")
+                return self._request(params="wipecache")
             elif mode == 'playlists':
-                return self.request(params="rescan playlists")
+                return self._request(params="rescan playlists")
         else:
             return ""
 
@@ -245,4 +236,4 @@ class LMSServer(object):
         """
         :attr rescanprogress: current rescan progress
         """
-        return self.request(params="rescanprogress")["_rescan"]
+        return self._request(params="rescanprogress")["_rescan"]
